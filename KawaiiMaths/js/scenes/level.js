@@ -17,6 +17,7 @@ class LevelScene {
     this.timeFailed = false;
     this.game.state.livesLostThisLevel = 0;
     this.game.state.levelStartTime = Date.now();
+    this.hud = new HUD();
   }
 
   onInput(code, type) {}
@@ -354,7 +355,7 @@ class LevelScene {
     }
 
     // HUD
-    this._drawHUD(ctx, W);
+    this.hud.draw(ctx, this.game, this.world, this.eq, this.player, this.isChallenge, this.timeLeft);
   }
 
   _drawBackground(ctx, W, H) {
@@ -395,89 +396,4 @@ class LevelScene {
     }
   }
 
-  _drawHUD(ctx, W) {
-    // Determine if hint should be shown
-    const { a, b } = this.eq;
-    const showHint = (this.world.operation === 'addition' || this.world.operation === 'subtraction')
-      && a != null && b != null && a <= 10 && b <= 10;
-
-    // top bar background
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.beginPath();
-    const hudHeight = showHint ? 74 : this.isChallenge ? 74 : 54;
-    ctx.roundRect(0, 0, W, hudHeight, [0, 0, 12, 12]);
-    ctx.fill();
-
-    // equation bubble
-    const eq = this.eq.display;
-    ctx.font = 'bold 26px sans-serif';
-    ctx.textAlign = 'center';
-    const textW = ctx.measureText(eq).width + 40;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.roundRect(W/2 - textW/2, 7, textW, 38, 10);
-    ctx.fill();
-    ctx.fillStyle = '#1a0033';
-    ctx.fillText(eq, W/2, 33);
-
-    // emoji visual hint for small operand equations (addition/subtraction with a,b ≤ 10)
-    if (showHint) {
-      const FRUIT = ['🍎','🍊','🍋','🍇','🍓','🍒','🍑','🍈','🍐','🍌'];
-      const fruit = FRUIT[this.game.state.currentWorld % FRUIT.length];
-      const hintA = fruit.repeat(Math.min(a, 10));
-      const hintB = fruit.repeat(Math.min(b, 10));
-      const hintOp = this.world.operation === 'addition' ? '+' : '−';
-      ctx.font = '13px serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText(`${hintA} ${hintOp} ${hintB}`, W / 2, 68);
-    }
-
-    // hearts
-    ctx.textAlign = 'left';
-    ctx.font = '22px serif';
-    const maxLives = 3;
-    for (let i = 0; i < maxLives; i++) {
-      ctx.globalAlpha = i < this.game.state.lives ? 1 : 0.2;
-      ctx.fillText('❤️', 10 + i * 28, 36);
-    }
-    ctx.globalAlpha = 1;
-
-    // stars
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.fillText(`⭐ ${this.game.state.stars}`, W - 10, 35);
-
-    // active power-up indicators
-    let puX = 10;
-    ctx.font = '16px serif';
-    ctx.textAlign = 'left';
-    if (this.player.speedBoost) { ctx.fillText(`🥾 ${this.player.speedBoostTimer.toFixed(1)}s`, puX, 52); puX += 80; }
-    if (this.player.extraJumpsLeft > 0) { ctx.fillText('🍄', puX, 52); puX += 30; }
-    if (this.player.shieldActive) { ctx.fillText('🛡️', puX, 52); puX += 30; }
-    if (this.player.starMultiplierTimer > 0) { ctx.fillText(`⭐×2 ${this.player.starMultiplierTimer.toFixed(1)}s`, puX, 52); }
-
-    // challenge timer
-    if (this.isChallenge) {
-      const tColor = this.timeLeft < 10 ? '#ff4444' : '#FFD700';
-      ctx.font = 'bold 20px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = tColor;
-      if (this.timeLeft < 10 && Math.floor(this.timeLeft * 4) % 2 === 0) {
-        ctx.shadowColor = '#ff0000';
-        ctx.shadowBlur = 8;
-      }
-      ctx.fillText(`⏱ ${Math.ceil(this.timeLeft)}s`, W / 2, 68);
-      ctx.shadowBlur = 0;
-    }
-
-    // world/level indicator
-    ctx.font = '12px sans-serif';
-    ctx.fillStyle = this.world.accentColor;
-    ctx.textAlign = 'right';
-    ctx.fillText(`${this.world.emoji} ${this.world.name}  L${this.game.state.currentLevel + 1}/10`, W - 10, 52);
-
-    ctx.textAlign = 'left';
-  }
 }
