@@ -138,7 +138,6 @@ class LevelScene {
   }
 
   _loseLife() {
-    if (this.player.invincible) return;
     this.game.state.lives--;
     Audio.lifeLost();
     this.screenFlash = '#ff000066';

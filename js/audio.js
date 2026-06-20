@@ -35,36 +35,48 @@ window.Audio = (() => {
       this.stopMusic();
       const ac = getCtx();
       const scales = [
-        [261.6, 293.7, 329.6, 392, 440],   // C major (candy)
-        [220, 246.9, 261.6, 293.7, 329.6], // A minor (ocean)
-        [392, 440, 493.9, 523.3, 587.3],   // G major (star)
-        [174.6, 196, 220, 261.6, 293.7],   // F major (forest)
-        [293.7, 329.6, 369.9, 415.3, 466.2] // D phrygian (castle)
+        [261.6, 293.7, 329.6, 392, 440],
+        [220, 246.9, 261.6, 293.7, 329.6],
+        [392, 440, 493.9, 523.3, 587.3],
+        [174.6, 196, 220, 261.6, 293.7],
+        [293.7, 329.6, 369.9, 415.3, 466.2]
       ];
       const scale = scales[worldIndex] || scales[0];
       const pattern = [0, 2, 4, 2, 1, 3, 4, 3];
       const tempo = 0.35;
-      pattern.forEach((noteIdx, i) => {
-        const osc = ac.createOscillator();
-        const g = ac.createGain();
-        osc.connect(g);
-        g.connect(ac.destination);
-        osc.type = 'square';
-        osc.frequency.value = scale[noteIdx];
-        g.gain.value = 0;
-        osc.start();
-        // pulse on/off in pattern loop
-        const loopLen = pattern.length * tempo;
-        for (let rep = 0; rep < 60; rep++) {
-          const t = ac.currentTime + rep * loopLen + i * tempo;
+      const loopLen = pattern.length * tempo;
+      const stopFlag = { active: true };
+      musicNodes.push(stopFlag);
+
+      const playLoop = (startTime) => {
+        if (!stopFlag.active) return;
+        pattern.forEach((noteIdx, i) => {
+          const osc = ac.createOscillator();
+          const g = ac.createGain();
+          osc.connect(g);
+          g.connect(ac.destination);
+          osc.type = 'square';
+          osc.frequency.value = scale[noteIdx];
+          g.gain.value = 0;
+          const t = startTime + i * tempo;
           g.gain.setValueAtTime(0.06, t);
           g.gain.setValueAtTime(0, t + tempo * 0.7);
-        }
-        musicNodes.push({ osc, g });
-      });
+          osc.start(t);
+          osc.stop(t + tempo);
+          musicNodes.push({ osc, g });
+        });
+        const nextLoop = startTime + loopLen;
+        const delay = (nextLoop - ac.currentTime) * 1000 - 100;
+        setTimeout(() => playLoop(nextLoop), Math.max(0, delay));
+      };
+
+      playLoop(ac.currentTime);
     },
     stopMusic() {
-      musicNodes.forEach(({ osc }) => { try { osc.stop(); } catch(e) {} });
+      musicNodes.forEach(n => {
+        if (n.active !== undefined) { n.active = false; return; }
+        try { n.osc.stop(); } catch(e) {}
+      });
       musicNodes = [];
     }
   };
