@@ -15,15 +15,42 @@ class LevelScene {
   onInput(code, type) {}
 
   _buildPlatforms() {
-    // ground + 6 floating platforms; layout shifts each level
     const level = this.game.state.currentLevel;
-    const seed = (this.game.state.currentWorld * 5 + level) * 7;
-    const rand = () => { let s = seed + (rand._i = (rand._i || 0) + 1); return ((s * 1664525 + 1013904223) & 0xffffffff) / 0xffffffff; };
-    const platforms = [{ x: 0, y: 460, w: 800, h: 40 }]; // ground
+    const seed = (this.game.state.currentWorld * 10 + level) * 7;
+    let _si = 0;
+    const rand = () => {
+      _si++;
+      let s = seed + _si * 1664525 + 1013904223;
+      s = (s * 1664525 + 1013904223) & 0xffffffff;
+      return (s >>> 0) / 0xffffffff;
+    };
+    const platforms = [{ x: 0, y: 460, w: 800, h: 40, type: 'static' }];
     const xs = [60, 180, 300, 450, 580, 680];
     const ys = [370, 310, 260, 330, 280, 350];
     for (let i = 0; i < 6; i++) {
-      platforms.push({ x: xs[i] + (rand() * 40 - 20) | 0, y: ys[i] + (rand() * 30 - 15) | 0, w: 100 + (rand() * 40) | 0, h: 18 });
+      const px = (xs[i] + (rand() * 40 - 20)) | 0;
+      const py = (ys[i] + (rand() * 30 - 15)) | 0;
+      const pw = (100 + rand() * 40) | 0;
+      // first 2 platforms: static. Later platforms: moving or disappearing based on level
+      let type = 'static';
+      if (level >= 3 && i === 2) type = 'moving';
+      if (level >= 5 && i === 3) type = 'disappearing';
+      if (level >= 7 && i === 4) type = 'moving';
+      if (level >= 9 && i === 5) type = 'disappearing';
+
+      const p = { x: px, y: py, w: pw, h: 18, type };
+      if (type === 'moving') {
+        p.moveDir = 1;
+        p.moveSpeed = 60 + level * 4;
+        p.moveLeft = Math.max(0, px - 80);
+        p.moveRight = Math.min(760, px + 80);
+      }
+      if (type === 'disappearing') {
+        p.disappearState = 'solid';
+        p.disappearTimer = 0;
+        p.disappearCooldown = 0;
+      }
+      platforms.push(p);
     }
     return platforms;
   }
@@ -76,8 +103,37 @@ class LevelScene {
     // portals
     for (const p of this.portals) p.update(dt);
 
+    // update moving platforms
+    for (const p of this.platforms) {
+      if (p.type === 'moving') {
+        p.x += p.moveDir * p.moveSpeed * dt;
+        if (p.x <= p.moveLeft) { p.x = p.moveLeft; p.moveDir = 1; }
+        if (p.x + p.w >= p.moveRight) { p.x = p.moveRight - p.w; p.moveDir = -1; }
+      }
+      if (p.type === 'disappearing') {
+        if (p.disappearState === 'shaking') {
+          p.disappearTimer -= dt;
+          if (p.disappearTimer <= 0) { p.disappearState = 'gone'; p.disappearCooldown = 2.5; }
+        } else if (p.disappearState === 'gone') {
+          p.disappearCooldown -= dt;
+          if (p.disappearCooldown <= 0) { p.disappearState = 'solid'; }
+        }
+      }
+    }
+
     // player
-    this.player.update(dt, this.game.keys, this.platforms);
+    const activePlatforms = this.platforms.filter(p => p.type !== 'disappearing' || p.disappearState !== 'gone');
+    this.player.update(dt, this.game.keys, activePlatforms);
+
+    // trigger disappearing platforms
+    for (const p of this.platforms) {
+      if (p.type === 'disappearing' && p.disappearState === 'solid') {
+        const onIt = this.player.onGround &&
+          this.player.x + this.player.w > p.x && this.player.x < p.x + p.w &&
+          Math.abs((this.player.y + this.player.h) - p.y) < 4;
+        if (onIt) { p.disappearState = 'shaking'; p.disappearTimer = 1.5; }
+      }
+    }
 
     // fall off bottom = lose life
     if (this.player.y > 520) {
@@ -183,18 +239,27 @@ class LevelScene {
 
     // platforms
     for (const p of this.platforms) {
+      if (p.type === 'disappearing' && p.disappearState === 'gone') continue;
+      const shake = (p.type === 'disappearing' && p.disappearState === 'shaking')
+        ? Math.sin(Date.now() / 40) * 3 : 0;
+      ctx.save();
+      ctx.translate(shake, 0);
       ctx.beginPath();
       ctx.roundRect(p.x, p.y, p.w, p.h, p.h === 40 ? 0 : 8);
+      const alpha = (p.type === 'disappearing' && p.disappearState === 'shaking')
+        ? 0.5 + 0.5 * Math.abs(Math.sin(Date.now() / 120)) : 1;
+      ctx.globalAlpha = alpha;
       ctx.fillStyle = world.platformColor;
       ctx.fill();
       ctx.strokeStyle = world.accentColor + '66';
       ctx.lineWidth = 2;
       ctx.stroke();
-      // top shine
       ctx.beginPath();
       ctx.roundRect(p.x + 4, p.y + 2, p.w - 8, 4, 2);
       ctx.fillStyle = world.accentColor + '33';
       ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
     }
 
     // portals
