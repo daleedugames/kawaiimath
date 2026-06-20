@@ -3,6 +3,12 @@ class WorldMapScene {
     this.game = game;
     this.selected = 0;
     this.starAnim = 0;
+    // sync saved stars into state
+    if (window.Save) {
+      const saved = window.Save.load();
+      game.state.levelStars = saved.levelStars;
+      // don't overwrite worldProgress — level.js already updated it
+    }
   }
 
   update(dt) {
@@ -116,6 +122,19 @@ class WorldMapScene {
       ctx.font = '12px sans-serif';
       ctx.fillStyle = world.accentColor;
       ctx.fillText(`${prog}/10 ⭐`, nx, nodeY + 73);
+
+      // mini star row — 10 dots for the 10 levels
+      const dotY = nodeY + 90;
+      const dotSpacing = 10;
+      const dotStartX = nx - (5 * dotSpacing);
+      for (let lvl = 0; lvl < 10; lvl++) {
+        const stars = (this.game.state.levelStars || {})[`${i}_${lvl}`] || 0;
+        ctx.font = '9px serif';
+        ctx.textAlign = 'center';
+        ctx.globalAlpha = stars > 0 ? 1 : 0.25;
+        ctx.fillText(stars >= 1 ? '⭐' : '·', dotStartX + lvl * dotSpacing, dotY);
+      }
+      ctx.globalAlpha = 1;
 
       // lock icon
       if (!isUnlocked) {
