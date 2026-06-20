@@ -12,6 +12,8 @@ class LevelScene {
     this.particles = [];
   }
 
+  onInput(code, type) {}
+
   _buildPlatforms() {
     // ground + 6 floating platforms; layout shifts each level
     const level = this.game.state.currentLevel;
@@ -120,19 +122,7 @@ class LevelScene {
         this._spawnParticles(enemy.x + 14, enemy.y + 14, '#FFD700', 8);
       } else if (enemy.checkHit(this.player)) {
         if (this.player.takeDamage()) {
-          this.game.state.lives--;
-          Audio.lifeLost();
-          this.screenFlash = '#ff000066';
-          this.screenFlashTimer = 0.5;
-          if (this.game.state.lives <= 0) {
-            setTimeout(() => {
-              if (typeof ResultScene !== 'undefined') {
-                this.game.switchScene(new ResultScene(this.game, false));
-              } else {
-                console.log('[LevelScene] Game over — ResultScene not yet defined');
-              }
-            }, 800);
-          }
+          this._loseLife();
         }
       }
     }
@@ -151,6 +141,8 @@ class LevelScene {
     if (this.player.invincible) return;
     this.game.state.lives--;
     Audio.lifeLost();
+    this.screenFlash = '#ff000066';
+    this.screenFlashTimer = 0.5;
     if (this.game.state.lives <= 0) {
       setTimeout(() => {
         if (typeof ResultScene !== 'undefined') {
