@@ -10,6 +10,7 @@ class LevelScene {
     this.screenFlash = null;
     this.screenFlashTimer = 0;
     this.particles = [];
+    this.powerups = this._buildPowerups();
   }
 
   onInput(code, type) {}
@@ -80,6 +81,42 @@ class LevelScene {
     const portalY = 380;
     const spacing = 800 / (portalCount + 1);
     return numbers.map((num, i) => new Portal(spacing * (i + 1) - 30, portalY, num, num === answer));
+  }
+
+  _buildPowerups() {
+    const types = ['speed', 'doublejump', 'shield', 'multiplier'];
+    const seed = this.game.state.currentWorld * 1000 + this.game.state.currentLevel + 42;
+    let s = seed;
+    const rand = () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+    const result = [];
+    const candidates = this.platforms.slice(1); // skip ground
+    const count = this.game.state.currentLevel >= 2 ? (rand() < 0.5 ? 2 : 1) : 1;
+    const usedIdx = new Set();
+    for (let i = 0; i < count; i++) {
+      let idx;
+      do { idx = Math.floor(rand() * candidates.length); } while (usedIdx.has(idx));
+      usedIdx.add(idx);
+      const plat = candidates[idx];
+      const type = types[Math.floor(rand() * types.length)];
+      result.push(new PowerUp(plat.x + plat.w / 2 - 14, plat.y - 32, type));
+    }
+    return result;
+  }
+
+  _applyPowerup(type) {
+    Audio.correct(); // reuse sound as pickup sound
+    if (type === 'speed') {
+      this.player.speedBoost = true;
+      this.player.speedBoostTimer = 8;
+    } else if (type === 'doublejump') {
+      this.player.extraJumpsLeft = 1;
+    } else if (type === 'shield') {
+      this.player.shieldActive = true;
+    } else if (type === 'multiplier') {
+      this.player.starMultiplier = 2;
+      this.player.starMultiplierTimer = 10;
+    }
+    this._spawnParticles(this.player.x + 16, this.player.y, POWERUP_DEFS[type].color, 10);
   }
 
   _spawnParticles(x, y, color, count = 12) {
@@ -172,13 +209,21 @@ class LevelScene {
       if (enemy.checkStomp(this.player)) {
         enemy.alive = false;
         this.player.vy = -300;
-        this.game.state.stars++;
+        this.game.state.stars += this.player.starMultiplier;
         Audio.stomp();
         this._spawnParticles(enemy.x + 14, enemy.y + 14, '#FFD700', 8);
       } else if (enemy.checkHit(this.player)) {
         if (this.player.takeDamage()) {
           this._loseLife();
         }
+      }
+    }
+
+    // power-ups
+    for (const pu of this.powerups) {
+      pu.update(dt);
+      if (pu.checkCollect(this.player)) {
+        this._applyPowerup(pu.type);
       }
     }
 
@@ -267,6 +312,9 @@ class LevelScene {
 
     // enemies
     for (const e of this.enemies) e.draw(ctx, this.game.state.currentWorld);
+
+    // power-ups
+    for (const pu of this.powerups) pu.draw(ctx);
 
     // player
     this.player.draw(ctx);
@@ -365,6 +413,15 @@ class LevelScene {
     ctx.fillStyle = '#FFD700';
     ctx.font = 'bold 20px sans-serif';
     ctx.fillText(`⭐ ${this.game.state.stars}`, W - 10, 35);
+
+    // active power-up indicators
+    let puX = 10;
+    ctx.font = '16px serif';
+    ctx.textAlign = 'left';
+    if (this.player.speedBoost) { ctx.fillText(`🥾 ${this.player.speedBoostTimer.toFixed(1)}s`, puX, 52); puX += 80; }
+    if (this.player.extraJumpsLeft > 0) { ctx.fillText('🍄', puX, 52); puX += 30; }
+    if (this.player.shieldActive) { ctx.fillText('🛡️', puX, 52); puX += 30; }
+    if (this.player.starMultiplierTimer > 0) { ctx.fillText(`⭐×2 ${this.player.starMultiplierTimer.toFixed(1)}s`, puX, 52); }
 
     // world/level indicator
     ctx.font = '12px sans-serif';
