@@ -33,7 +33,7 @@ function generateDistractors(answer, rand, count) {
 function _diffScale(rand, min1, max1, min2, max2, t) {
   const mn = min1 + (min2 - min1) * t;
   const mx = max1 + (max2 - max1) * t;
-  return Math.floor(rand() * (mx - mn + 1)) + mn;
+  return Math.floor(rand() * (mx - mn + 1) + mn);
 }
 
 window.generateEquation = function(worldIndex, levelIndex) {

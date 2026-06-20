@@ -77,14 +77,14 @@ class HUD {
     ctx.textAlign = 'left';
     if (player.speedBoost) {
       ctx.fillStyle = '#fff';
-      ctx.fillText(`🥾 ${player.speedBoostTimer.toFixed(1)}s`, puX, 52);
+      ctx.fillText(`🥾 ${Math.ceil(player.speedBoostTimer)}s`, puX, 52);
       puX += 85;
     }
     if (player.extraJumpsLeft > 0) { ctx.fillText('🍄', puX, 52); puX += 30; }
     if (player.shieldActive) { ctx.fillText('🛡️', puX, 52); puX += 30; }
     if (player.starMultiplierTimer > 0) {
       ctx.fillStyle = '#FFD700';
-      ctx.fillText(`⭐×2 ${player.starMultiplierTimer.toFixed(1)}s`, puX, 52);
+      ctx.fillText(`⭐×2 ${Math.ceil(player.starMultiplierTimer)}s`, puX, 52);
     }
 
     ctx.textAlign = 'left';
