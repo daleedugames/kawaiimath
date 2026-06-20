@@ -169,7 +169,7 @@ class ResultScene {
 
       ctx.font = '18px sans-serif';
       ctx.fillStyle = '#ff9999';
-      ctx.fillText(`Equation: ${generateEquation(this.game.state.currentWorld, this.game.state.currentLevel - 1 < 0 ? 0 : this.game.state.currentLevel).display}`, W/2, cardY + 185);
+      ctx.fillText(`Equation: ${generateEquation(this.game.state.currentWorld, this.game.state.currentLevel).display}`, W/2, cardY + 185);
     }
 
     // press space hint

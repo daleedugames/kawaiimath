@@ -88,6 +88,7 @@ window.generateEquation = function(worldIndex, levelIndex) {
   const useVariant = (op === 'addition' || op === 'subtraction') && rand() < (t * 0.5);
   if (useVariant) {
     const variantType = rand() < 0.5 ? 'missing-number' : 'missing-operator';
+    // missing-number for subtraction not implemented; display stays as standard subtraction
     if (variantType === 'missing-number' && op === 'addition') {
       const showLeft = rand() < 0.5;
       display = showLeft ? `? + ${b} = ${answer}` : `${a} + ? = ${answer}`;

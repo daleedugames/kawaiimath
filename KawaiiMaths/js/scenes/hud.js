@@ -4,7 +4,7 @@ class HUD {
     const { a: ha, b: hb } = eq;
     const showHint = (world.operation === 'addition' || world.operation === 'subtraction')
       && ha != null && hb != null && ha <= 10 && hb <= 10;
-    const hudH = (showHint || isChallenge) ? 74 : 54;
+    const hudH = (showHint && isChallenge) ? 94 : (showHint || isChallenge) ? 74 : 54;
 
     // top bar background
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
@@ -46,7 +46,7 @@ class HUD {
       if (timeLeft < 10 && Math.floor(timeLeft * 4) % 2 === 0) {
         ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 8;
       }
-      ctx.fillText(`⏱ ${Math.ceil(timeLeft)}s`, W / 2, 68);
+      ctx.fillText(`⏱ ${Math.ceil(timeLeft)}s`, W / 2, showHint ? 88 : 68);
       ctx.shadowBlur = 0;
     }
 
