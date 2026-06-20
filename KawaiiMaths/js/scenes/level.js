@@ -396,10 +396,15 @@ class LevelScene {
   }
 
   _drawHUD(ctx, W) {
+    // Determine if hint should be shown
+    const { a, b } = this.eq;
+    const showHint = (this.world.operation === 'addition' || this.world.operation === 'subtraction')
+      && a != null && b != null && a <= 10 && b <= 10;
+
     // top bar background
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.beginPath();
-    const hudHeight = this.isChallenge ? 74 : 54;
+    const hudHeight = showHint ? 74 : this.isChallenge ? 74 : 54;
     ctx.roundRect(0, 0, W, hudHeight, [0, 0, 12, 12]);
     ctx.fill();
 
@@ -414,6 +419,19 @@ class LevelScene {
     ctx.fill();
     ctx.fillStyle = '#1a0033';
     ctx.fillText(eq, W/2, 33);
+
+    // emoji visual hint for small operand equations (addition/subtraction with a,b ≤ 10)
+    if (showHint) {
+      const FRUIT = ['🍎','🍊','🍋','🍇','🍓','🍒','🍑','🍈','🍐','🍌'];
+      const fruit = FRUIT[this.game.state.currentWorld % FRUIT.length];
+      const hintA = fruit.repeat(Math.min(a, 10));
+      const hintB = fruit.repeat(Math.min(b, 10));
+      const hintOp = this.world.operation === 'addition' ? '+' : '−';
+      ctx.font = '13px serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillText(`${hintA} ${hintOp} ${hintB}`, W / 2, 68);
+    }
 
     // hearts
     ctx.textAlign = 'left';
