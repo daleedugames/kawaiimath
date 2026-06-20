@@ -29,7 +29,6 @@ class Game {
   }
 
   start() {
-    // placeholder: show purple screen until scenes are built
     const loop = (timestamp) => {
       const dt = Math.min((timestamp - this.lastTime) / 1000, 0.05);
       this.lastTime = timestamp;
@@ -38,21 +37,10 @@ class Game {
       if (this.scene) {
         this.scene.update(dt);
         this.scene.draw(this.ctx);
-      } else {
-        this.ctx.fillStyle = '#fff';
-        this.ctx.font = 'bold 32px sans-serif';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('Loading…', 400, 250);
       }
       requestAnimationFrame(loop);
     };
-    // replace the placeholder "Loading..." with the world map
-    // (scenes will be defined by the time scripts load)
-    setTimeout(() => {
-      if (typeof WorldMapScene !== 'undefined') {
-        this.switchScene(new WorldMapScene(this));
-      }
-    }, 0);
+    this.switchScene(new WorldMapScene(this));
     requestAnimationFrame(loop);
   }
 }
