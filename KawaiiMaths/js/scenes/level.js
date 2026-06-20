@@ -11,6 +11,10 @@ class LevelScene {
     this.screenFlashTimer = 0;
     this.particles = [];
     this.powerups = this._buildPowerups();
+    this.isChallenge = this.game.state.currentLevel % 5 === 4;
+    this.timeLimit = 60; // seconds for challenge levels
+    this.timeLeft = this.timeLimit;
+    this.timeFailed = false;
   }
 
   onInput(code, type) {}
@@ -136,6 +140,15 @@ class LevelScene {
 
   update(dt) {
     if (this.screenFlashTimer > 0) this.screenFlashTimer -= dt;
+
+    if (this.isChallenge && !this.timeFailed) {
+      this.timeLeft -= dt;
+      if (this.timeLeft <= 0) {
+        this.timeLeft = 0;
+        this.timeFailed = true;
+        this._loseLife();
+      }
+    }
 
     // portals
     for (const p of this.portals) p.update(dt);
@@ -383,7 +396,8 @@ class LevelScene {
     // top bar background
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.beginPath();
-    ctx.roundRect(0, 0, W, 54, [0, 0, 12, 12]);
+    const hudHeight = this.isChallenge ? 74 : 54;
+    ctx.roundRect(0, 0, W, hudHeight, [0, 0, 12, 12]);
     ctx.fill();
 
     // equation bubble
@@ -422,6 +436,20 @@ class LevelScene {
     if (this.player.extraJumpsLeft > 0) { ctx.fillText('🍄', puX, 52); puX += 30; }
     if (this.player.shieldActive) { ctx.fillText('🛡️', puX, 52); puX += 30; }
     if (this.player.starMultiplierTimer > 0) { ctx.fillText(`⭐×2 ${this.player.starMultiplierTimer.toFixed(1)}s`, puX, 52); }
+
+    // challenge timer
+    if (this.isChallenge) {
+      const tColor = this.timeLeft < 10 ? '#ff4444' : '#FFD700';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = tColor;
+      if (this.timeLeft < 10 && Math.floor(this.timeLeft * 4) % 2 === 0) {
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 8;
+      }
+      ctx.fillText(`⏱ ${Math.ceil(this.timeLeft)}s`, W / 2, 68);
+      ctx.shadowBlur = 0;
+    }
 
     // world/level indicator
     ctx.font = '12px sans-serif';
