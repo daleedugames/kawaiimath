@@ -46,6 +46,13 @@ class Game {
       }
       requestAnimationFrame(loop);
     };
+    // replace the placeholder "Loading..." with the world map
+    // (scenes will be defined by the time scripts load)
+    setTimeout(() => {
+      if (typeof WorldMapScene !== 'undefined') {
+        this.switchScene(new WorldMapScene(this));
+      }
+    }, 0);
     requestAnimationFrame(loop);
   }
 }
