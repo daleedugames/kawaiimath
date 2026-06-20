@@ -9,7 +9,12 @@ function seededRand(seed) {
 function generateDistractors(answer, rand, count = 3) {
   const offsets = [-3, -2, -1, 1, 2, 3, 5, -5, 10, -10];
   const distractors = new Set();
-  const shuffled = offsets.slice().sort(() => rand() - 0.5);
+  const shuffled = offsets.slice();
+  // Fisher-Yates shuffle
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   for (const off of shuffled) {
     const candidate = answer + off;
     if (candidate > 0 && candidate !== answer && !distractors.has(candidate)) {
@@ -61,7 +66,11 @@ window.generateEquation = function(worldIndex, levelIndex) {
     const useAdd = rand() > 0.5;
     answer = useAdd ? (a * b) + c : (a * b) - c;
     display = useAdd ? `(${a} × ${b}) + ${c} = ?` : `(${a} × ${b}) − ${c} = ?`;
-    if (answer <= 0) { answer = a * b + c; display = `(${a} × ${b}) + ${c} = ?`; }
+    // Ensure answer is positive before generating distractors
+    if (answer <= 0) {
+      answer = a * b + c;
+      display = `(${a} × ${b}) + ${c} = ?`;
+    }
   }
 
   return { display, answer, distractors: generateDistractors(answer, rand) };
