@@ -15,6 +15,8 @@ class LevelScene {
     this.timeLimit = 60; // seconds for challenge levels
     this.timeLeft = this.timeLimit;
     this.timeFailed = false;
+    this.game.state.livesLostThisLevel = 0;
+    this.game.state.levelStartTime = Date.now();
   }
 
   onInput(code, type) {}
@@ -251,6 +253,7 @@ class LevelScene {
   }
 
   _loseLife() {
+    this.game.state.livesLostThisLevel++;
     this.game.state.lives--;
     Audio.lifeLost();
     this.screenFlash = '#ff000066';

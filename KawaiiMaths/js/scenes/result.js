@@ -4,6 +4,24 @@ class ResultScene {
     this.win = win;
     this.anim = 0;
     this.particles = [];
+    this.starsEarned = 0;
+    this.starsBest = 0;
+    if (win) {
+      const w = game.state.currentWorld;
+      const l = game.state.currentLevel - 1; // currentLevel was already incremented in _levelComplete
+      const elapsed = (Date.now() - game.state.levelStartTime) / 1000;
+      const timeTarget = (l % 5 === 4) ? 50 : 45;
+      const livesLost = game.state.livesLostThisLevel;
+      this.starsEarned = 1;
+      if (livesLost === 0) this.starsEarned = 2;
+      if (livesLost === 0 && elapsed <= timeTarget) this.starsEarned = 3;
+
+      const key = `${w}_${l}`;
+      this.starsBest = (game.state.levelStars[key] || 0);
+      const newBest = Math.max(this.starsBest, this.starsEarned);
+      game.state.levelStars[key] = newBest;
+      window.Save && window.Save.save(game.state);
+    }
     if (win) {
       for (let i = 0; i < 20; i++) {
         const angle = Math.random() * Math.PI * 2;
@@ -115,9 +133,28 @@ class ResultScene {
         ? `${WORLDS[this.game.state.currentWorld + 1]?.name ?? 'All worlds'} unlocked!`
         : `Next up: Level ${this.game.state.currentLevel + 1}`, W/2, cardY + 145);
 
+      // star rating display
+      const starY = cardY + 220;
+      ctx.font = '32px serif';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < 3; i++) {
+        ctx.globalAlpha = i < this.starsEarned ? 1 : 0.2;
+        ctx.fillText('⭐', W/2 - 40 + i * 40, starY);
+      }
+      ctx.globalAlpha = 1;
+      if (this.starsEarned > this.starsBest) {
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillStyle = '#FFD700';
+        ctx.fillText('New Best!', W/2, starY + 24);
+      } else {
+        ctx.font = '13px sans-serif';
+        ctx.fillStyle = '#aaa';
+        ctx.fillText(`Best: ${'⭐'.repeat(this.starsBest) || '—'}`, W/2, starY + 24);
+      }
+
       ctx.font = '20px sans-serif';
       ctx.fillStyle = world.accentColor;
-      ctx.fillText(`⭐ Stars collected: ${this.game.state.stars}`, W/2, cardY + 185);
+      ctx.fillText(`⭐ Stars collected: ${this.game.state.stars}`, W/2, cardY + 255);
     } else {
       ctx.font = 'bold 42px sans-serif';
       ctx.fillStyle = '#ff6666';
