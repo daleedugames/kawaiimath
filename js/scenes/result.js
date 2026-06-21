@@ -98,7 +98,7 @@ class ResultScene {
     ctx.globalAlpha = 1;
 
     // card
-    const cardW = 480, cardH = 280;
+    const cardW = 480, cardH = 320;
     const cardX = (W - cardW) / 2, cardY = (H - cardH) / 2;
     ctx.fillStyle = this.win ? '#1a0033' : '#330000';
     ctx.beginPath();
@@ -134,7 +134,7 @@ class ResultScene {
         : `Next up: Level ${this.game.state.currentLevel + 1}`, W/2, cardY + 145);
 
       // star rating display
-      const starY = cardY + 220;
+      const starY = cardY + 210;
       ctx.font = '32px serif';
       ctx.textAlign = 'center';
       for (let i = 0; i < 3; i++) {
@@ -145,16 +145,16 @@ class ResultScene {
       if (this.starsEarned > this.starsBest) {
         ctx.font = 'bold 14px sans-serif';
         ctx.fillStyle = '#FFD700';
-        ctx.fillText('New Best!', W/2, starY + 24);
+        ctx.fillText('New Best!', W/2, starY + 28);
       } else {
         ctx.font = '13px sans-serif';
         ctx.fillStyle = '#aaa';
-        ctx.fillText(`Best: ${'⭐'.repeat(this.starsBest) || '—'}`, W/2, starY + 24);
+        ctx.fillText(`Best: ${'⭐'.repeat(this.starsBest) || '—'}`, W/2, starY + 28);
       }
 
-      ctx.font = '20px sans-serif';
+      ctx.font = '18px sans-serif';
       ctx.fillStyle = world.accentColor;
-      ctx.fillText(`⭐ Stars collected: ${this.game.state.stars}`, W/2, cardY + 255);
+      ctx.fillText(`⭐ Stars collected: ${this.game.state.stars}`, W/2, starY + 56);
     } else {
       ctx.font = 'bold 42px sans-serif';
       ctx.fillStyle = '#ff6666';
