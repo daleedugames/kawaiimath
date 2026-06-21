@@ -18,6 +18,14 @@ class Player {
     this.facingRight = true;
     this.jumpHeld = false;
     this.jumpHeldTime = 0;
+    // power-up state
+    this.speedBoost = false;
+    this.speedBoostTimer = 0;
+    this.extraJumpsLeft = 0;
+    this.shieldActive = false;
+    this.starMultiplier = 1;
+    this.starMultiplierTimer = 0;
+    this._jumpPressedLast = false;
   }
 
   update(dt, keys, platforms) {
@@ -37,7 +45,16 @@ class Player {
       return;
     }
 
-    const speed = 180;
+    if (this.speedBoost) {
+      this.speedBoostTimer -= dt;
+      if (this.speedBoostTimer <= 0) { this.speedBoost = false; }
+    }
+    if (this.starMultiplierTimer > 0) {
+      this.starMultiplierTimer -= dt;
+      if (this.starMultiplierTimer <= 0) { this.starMultiplier = 1; }
+    }
+
+    const speed = this.speedBoost ? 360 : 180;
     const gravity = 900;
     const jumpForce = -420;
     const maxJumpHold = 0.18;
@@ -60,6 +77,13 @@ class Player {
       if (this.jumpHeldTime < maxJumpHold) this.vy -= 300 * dt;
     }
     if (!jumpPressed) this.jumpHeld = false;
+
+    if (jumpPressed && !this.onGround && !this._jumpPressedLast && this.extraJumpsLeft > 0) {
+      this.vy = -420;
+      this.extraJumpsLeft--;
+      Audio.jump();
+    }
+    this._jumpPressedLast = jumpPressed;
 
     // gravity
     this.vy += gravity * dt;
@@ -95,6 +119,7 @@ class Player {
 
   takeDamage() {
     if (this.invincible) return false;
+    if (this.shieldActive) { this.shieldActive = false; return false; }
     this.invincible = true;
     this.invincibleTimer = 1.5;
     this.vy = -250;

@@ -29,7 +29,9 @@ window.Audio = (() => {
     wrong()   { beep(180, 'sawtooth', 0.3, 0.4); beep(150, 'sawtooth', 0.3, 0.3, 0.15); },
     lifeLost(){ beep(300, 'sawtooth', 0.2, 0.3); beep(200, 'sawtooth', 0.3, 0.3, 0.1); beep(150, 'sawtooth', 0.4, 0.35, 0.25); },
     correct() {
-      [523, 659, 784, 1047].forEach((f, i) => beep(f, 'square', 0.15, 0.3, i * 0.07));
+      beep(440, 'sine', 0.25, 0.08);
+      beep(528, 'sine', 0.25, 0.08, 0.12);
+      beep(660, 'sine', 0.35, 0.09, 0.24);
     },
     startMusic(worldIndex) {
       this.stopMusic();

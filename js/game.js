@@ -7,12 +7,16 @@ class Game {
     this.scene = null;
     this.lastTime = 0;
     this.keys = {};
+    const saved = window.Save ? window.Save.load() : { worldProgress: [0,0,0,0,0], levelStars: {} };
     this.state = {
       currentWorld: 0,
       currentLevel: 0,
       lives: 3,
       stars: 0,
-      worldProgress: [0, 0, 0, 0, 0]
+      worldProgress: saved.worldProgress,
+      levelStars: saved.levelStars,
+      livesLostThisLevel: 0,
+      levelStartTime: 0
     };
     window.addEventListener('keydown', e => {
       this.keys[e.code] = true;

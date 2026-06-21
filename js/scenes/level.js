@@ -10,20 +10,55 @@ class LevelScene {
     this.screenFlash = null;
     this.screenFlashTimer = 0;
     this.particles = [];
+    this.powerups = this._buildPowerups();
+    this.isChallenge = this.game.state.currentLevel % 5 === 4;
+    this.timeLimit = 60; // seconds for challenge levels
+    this.timeLeft = this.timeLimit;
+    this.timeFailed = false;
+    this.game.state.livesLostThisLevel = 0;
+    this.game.state.levelStartTime = Date.now();
+    this.hud = new HUD();
   }
 
   onInput(code, type) {}
 
   _buildPlatforms() {
-    // ground + 6 floating platforms; layout shifts each level
     const level = this.game.state.currentLevel;
-    const seed = (this.game.state.currentWorld * 5 + level) * 7;
-    const rand = () => { let s = seed + (rand._i = (rand._i || 0) + 1); return ((s * 1664525 + 1013904223) & 0xffffffff) / 0xffffffff; };
-    const platforms = [{ x: 0, y: 460, w: 800, h: 40 }]; // ground
+    const seed = (this.game.state.currentWorld * 10 + level) * 7;
+    let _si = 0;
+    const rand = () => {
+      _si++;
+      let s = seed + _si * 1664525 + 1013904223;
+      s = (s * 1664525 + 1013904223) & 0xffffffff;
+      return (s >>> 0) / 0xffffffff;
+    };
+    const platforms = [{ x: 0, y: 460, w: 800, h: 40, type: 'static' }];
     const xs = [60, 180, 300, 450, 580, 680];
     const ys = [370, 310, 260, 330, 280, 350];
     for (let i = 0; i < 6; i++) {
-      platforms.push({ x: xs[i] + (rand() * 40 - 20) | 0, y: ys[i] + (rand() * 30 - 15) | 0, w: 100 + (rand() * 40) | 0, h: 18 });
+      const px = (xs[i] + (rand() * 40 - 20)) | 0;
+      const py = (ys[i] + (rand() * 30 - 15)) | 0;
+      const pw = (100 + rand() * 40) | 0;
+      // first 2 platforms: static. Later platforms: moving or disappearing based on level
+      let type = 'static';
+      if (level >= 3 && i === 2) type = 'moving';
+      if (level >= 5 && i === 3) type = 'disappearing';
+      if (level >= 7 && i === 4) type = 'moving';
+      if (level >= 9 && i === 5) type = 'disappearing';
+
+      const p = { x: px, y: py, w: pw, h: 18, type };
+      if (type === 'moving') {
+        p.moveDir = 1;
+        p.moveSpeed = 60 + level * 4;
+        p.moveLeft = Math.max(0, px - 80);
+        p.moveRight = Math.min(760, px + 80);
+      }
+      if (type === 'disappearing') {
+        p.disappearState = 'solid';
+        p.disappearTimer = 0;
+        p.disappearCooldown = 0;
+      }
+      platforms.push(p);
     }
     return platforms;
   }
@@ -41,9 +76,8 @@ class LevelScene {
   }
 
   _buildPortals() {
-    const { answer, distractors } = this.eq;
-    const numbers = [answer, ...distractors];
-    // shuffle with seeded rand
+    const { answer, distractors, portalCount } = this.eq;
+    const numbers = [answer, ...distractors]; // length = portalCount
     const seed = this.game.state.currentWorld * 100 + this.game.state.currentLevel + 999;
     let s = seed;
     const rand = () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
@@ -52,8 +86,44 @@ class LevelScene {
       [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
     }
     const portalY = 380;
-    const spacing = 800 / 5;
+    const spacing = 800 / (portalCount + 1);
     return numbers.map((num, i) => new Portal(spacing * (i + 1) - 30, portalY, num, num === answer));
+  }
+
+  _buildPowerups() {
+    const types = ['speed', 'doublejump', 'shield', 'multiplier'];
+    const seed = this.game.state.currentWorld * 1000 + this.game.state.currentLevel + 42;
+    let s = seed;
+    const rand = () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+    const result = [];
+    const candidates = this.platforms.slice(1); // skip ground
+    const count = this.game.state.currentLevel >= 2 ? (rand() < 0.5 ? 2 : 1) : 1;
+    const usedIdx = new Set();
+    for (let i = 0; i < count; i++) {
+      let idx;
+      do { idx = Math.floor(rand() * candidates.length); } while (usedIdx.has(idx));
+      usedIdx.add(idx);
+      const plat = candidates[idx];
+      const type = types[Math.floor(rand() * types.length)];
+      result.push(new PowerUp(plat.x + plat.w / 2 - 14, plat.y - 32, type));
+    }
+    return result;
+  }
+
+  _applyPowerup(type) {
+    Audio.correct(); // reuse sound as pickup sound
+    if (type === 'speed') {
+      this.player.speedBoost = true;
+      this.player.speedBoostTimer = 8;
+    } else if (type === 'doublejump') {
+      this.player.extraJumpsLeft = 1;
+    } else if (type === 'shield') {
+      this.player.shieldActive = true;
+    } else if (type === 'multiplier') {
+      this.player.starMultiplier = 2;
+      this.player.starMultiplierTimer = 10;
+    }
+    this._spawnParticles(this.player.x + 16, this.player.y, POWERUP_DEFS[type].color, 10);
   }
 
   _spawnParticles(x, y, color, count = 12) {
@@ -74,11 +144,49 @@ class LevelScene {
   update(dt) {
     if (this.screenFlashTimer > 0) this.screenFlashTimer -= dt;
 
+    if (this.isChallenge && !this.timeFailed) {
+      this.timeLeft -= dt;
+      if (this.timeLeft <= 0) {
+        this.timeLeft = 0;
+        this.timeFailed = true;
+        this._loseLife();
+      }
+    }
+
     // portals
     for (const p of this.portals) p.update(dt);
 
+    // update moving platforms
+    for (const p of this.platforms) {
+      if (p.type === 'moving') {
+        p.x += p.moveDir * p.moveSpeed * dt;
+        if (p.x <= p.moveLeft) { p.x = p.moveLeft; p.moveDir = 1; }
+        if (p.x + p.w >= p.moveRight) { p.x = p.moveRight - p.w; p.moveDir = -1; }
+      }
+      if (p.type === 'disappearing') {
+        if (p.disappearState === 'shaking') {
+          p.disappearTimer -= dt;
+          if (p.disappearTimer <= 0) { p.disappearState = 'gone'; p.disappearCooldown = 2.5; }
+        } else if (p.disappearState === 'gone') {
+          p.disappearCooldown -= dt;
+          if (p.disappearCooldown <= 0) { p.disappearState = 'solid'; }
+        }
+      }
+    }
+
     // player
-    this.player.update(dt, this.game.keys, this.platforms);
+    const activePlatforms = this.platforms.filter(p => p.type !== 'disappearing' || p.disappearState !== 'gone');
+    this.player.update(dt, this.game.keys, activePlatforms);
+
+    // trigger disappearing platforms
+    for (const p of this.platforms) {
+      if (p.type === 'disappearing' && p.disappearState === 'solid') {
+        const onIt = this.player.onGround &&
+          this.player.x + this.player.w > p.x && this.player.x < p.x + p.w &&
+          Math.abs((this.player.y + this.player.h) - p.y) < 4;
+        if (onIt) { p.disappearState = 'shaking'; p.disappearTimer = 1.5; }
+      }
+    }
 
     // fall off bottom = lose life
     if (this.player.y > 520) {
@@ -117,13 +225,21 @@ class LevelScene {
       if (enemy.checkStomp(this.player)) {
         enemy.alive = false;
         this.player.vy = -300;
-        this.game.state.stars++;
+        this.game.state.stars += this.player.starMultiplier;
         Audio.stomp();
         this._spawnParticles(enemy.x + 14, enemy.y + 14, '#FFD700', 8);
       } else if (enemy.checkHit(this.player)) {
         if (this.player.takeDamage()) {
           this._loseLife();
         }
+      }
+    }
+
+    // power-ups
+    for (const pu of this.powerups) {
+      pu.update(dt);
+      if (pu.checkCollect(this.player)) {
+        this._applyPowerup(pu.type);
       }
     }
 
@@ -138,6 +254,7 @@ class LevelScene {
   }
 
   _loseLife() {
+    this.game.state.livesLostThisLevel++;
     this.game.state.lives--;
     Audio.lifeLost();
     this.screenFlash = '#ff000066';
@@ -184,18 +301,27 @@ class LevelScene {
 
     // platforms
     for (const p of this.platforms) {
+      if (p.type === 'disappearing' && p.disappearState === 'gone') continue;
+      const shake = (p.type === 'disappearing' && p.disappearState === 'shaking')
+        ? Math.sin(Date.now() / 40) * 3 : 0;
+      ctx.save();
+      ctx.translate(shake, 0);
       ctx.beginPath();
       ctx.roundRect(p.x, p.y, p.w, p.h, p.h === 40 ? 0 : 8);
+      const alpha = (p.type === 'disappearing' && p.disappearState === 'shaking')
+        ? 0.5 + 0.5 * Math.abs(Math.sin(Date.now() / 120)) : 1;
+      ctx.globalAlpha = alpha;
       ctx.fillStyle = world.platformColor;
       ctx.fill();
       ctx.strokeStyle = world.accentColor + '66';
       ctx.lineWidth = 2;
       ctx.stroke();
-      // top shine
       ctx.beginPath();
       ctx.roundRect(p.x + 4, p.y + 2, p.w - 8, 4, 2);
       ctx.fillStyle = world.accentColor + '33';
       ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
     }
 
     // portals
@@ -203,6 +329,9 @@ class LevelScene {
 
     // enemies
     for (const e of this.enemies) e.draw(ctx, this.game.state.currentWorld);
+
+    // power-ups
+    for (const pu of this.powerups) pu.draw(ctx);
 
     // player
     this.player.draw(ctx);
@@ -226,7 +355,7 @@ class LevelScene {
     }
 
     // HUD
-    this._drawHUD(ctx, W);
+    this.hud.draw(ctx, this.game, this.world, this.eq, this.player, this.isChallenge, this.timeLeft);
   }
 
   _drawBackground(ctx, W, H) {
@@ -267,47 +396,4 @@ class LevelScene {
     }
   }
 
-  _drawHUD(ctx, W) {
-    // top bar background
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.beginPath();
-    ctx.roundRect(0, 0, W, 54, [0, 0, 12, 12]);
-    ctx.fill();
-
-    // equation bubble
-    const eq = this.eq.display;
-    ctx.font = 'bold 26px sans-serif';
-    ctx.textAlign = 'center';
-    const textW = ctx.measureText(eq).width + 40;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.roundRect(W/2 - textW/2, 7, textW, 38, 10);
-    ctx.fill();
-    ctx.fillStyle = '#1a0033';
-    ctx.fillText(eq, W/2, 33);
-
-    // hearts
-    ctx.textAlign = 'left';
-    ctx.font = '22px serif';
-    const maxLives = 3;
-    for (let i = 0; i < maxLives; i++) {
-      ctx.globalAlpha = i < this.game.state.lives ? 1 : 0.2;
-      ctx.fillText('❤️', 10 + i * 28, 36);
-    }
-    ctx.globalAlpha = 1;
-
-    // stars
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.fillText(`⭐ ${this.game.state.stars}`, W - 10, 35);
-
-    // world/level indicator
-    ctx.font = '12px sans-serif';
-    ctx.fillStyle = this.world.accentColor;
-    ctx.textAlign = 'right';
-    ctx.fillText(`${this.world.emoji} ${this.world.name}  L${this.game.state.currentLevel + 1}/5`, W - 10, 52);
-
-    ctx.textAlign = 'left';
-  }
 }
