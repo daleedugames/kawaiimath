@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scientific Calculator</title>
+  <meta name="description" content="A keyboard-friendly scientific calculator with trig, logarithms, and inverse functions.">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #000;
+      color: #4af;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .calculator {
+      background: #050a10;
+      border: 2px solid #1a5080;
+      border-radius: 12px;
+      padding: 20px;
+      width: 380px;
+      box-shadow: 0 0 30px #0af3, 0 0 60px #0af1;
+    }
+
+    .display {
+      background: #000d1a;
+      border: 1px solid #1a5080;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      text-align: right;
+    }
+
+    .display .expression {
+      font-size: 13px;
+      color: #2a6a9a;
+      min-height: 18px;
+      word-break: break-all;
+    }
+
+    .display .result {
+      font-size: 32px;
+      color: #4af;
+      min-height: 42px;
+      word-break: break-all;
+      text-shadow: 0 0 8px #4af8;
+    }
+
+    .mode-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 6px;
+      font-size: 12px;
+      background: #000d1a;
+      color: #2a6a9a;
+      border: 1px solid #1a3a5a;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      transition: all 0.15s;
+    }
+
+    .mode-btn.active, .mode-btn:hover {
+      background: #0a1e30;
+      color: #4af;
+      border-color: #2a6a9a;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    button {
+      padding: 12px 6px;
+      font-size: 14px;
+      font-family: 'Courier New', monospace;
+      background: #000d1a;
+      color: #4af;
+      border: 1px solid #1a3a5a;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.1s;
+      line-height: 1;
+    }
+
+    button:hover {
+      background: #0a2030;
+      border-color: #4af;
+      box-shadow: 0 0 8px #4af6;
+    }
+
+    button:active {
+      background: #1a4060;
+    }
+
+    button.fn {
+      color: #2ad;
+      font-size: 12px;
+    }
+
+    button.op {
+      color: #5cf;
+      border-color: #1a5080;
+    }
+
+    button.eq {
+      background: #0a2a50;
+      color: #8df;
+      border-color: #4af;
+      box-shadow: 0 0 6px #4af5;
+      grid-column: span 2;
+    }
+
+    button.eq:hover {
+      background: #1a4a80;
+      box-shadow: 0 0 14px #4af9;
+    }
+
+    button.clear {
+      color: #f64;
+      border-color: #5a1a0a;
+    }
+
+    button.clear:hover {
+      background: #200a00;
+      border-color: #f64;
+      box-shadow: 0 0 8px #f646;
+    }
+
+    button.num {
+      color: #7df;
+    }
+
+    .error { color: #f64 !important; font-size: 18px; }
+  </style>
+</head>
+<body>
+<div class="calculator">
+  <div class="display">
+    <div class="expression" id="expression"></div>
+    <div class="result" id="result">0</div>
+  </div>
+
+  <div class="mode-row">
+    <button class="mode-btn active" id="btn-deg" onclick="setMode('deg')">DEG</button>
+    <button class="mode-btn" id="btn-rad" onclick="setMode('rad')">RAD</button>
+    <button class="mode-btn" id="btn-inv" onclick="toggleInv()">INV</button>
+  </div>
+
+  <div class="buttons" id="btnGrid"></div>
+</div>
+
+<script>
+  let expr = '';
+  let lastResult = '';
+  let mode = 'deg';
+  let inv = false;
+  let justEvaled = false;
+
+  const display = document.getElementById('result');
+  const exprDisplay = document.getElementById('expression');
+
+  const buttons = [
+    // row 1
+    { label: 'sin',   fn: () => insertFn('sin('),   cls: 'fn', invLabel: 'asin', invFn: () => insertFn('asin(') },
+    { label: 'cos',   fn: () => insertFn('cos('),   cls: 'fn', invLabel: 'acos', invFn: () => insertFn('acos(') },
+    { label: 'tan',   fn: () => insertFn('tan('),   cls: 'fn', invLabel: 'atan', invFn: () => insertFn('atan(') },
+    { label: 'log',   fn: () => insertFn('log('),   cls: 'fn', invLabel: '10^x', invFn: () => insertFn('pow(10,') },
+    { label: 'ln',    fn: () => insertFn('ln('),    cls: 'fn', invLabel: 'e^x',  invFn: () => insertFn('exp(') },
+    // row 2
+    { label: 'x²',   fn: () => append('^2'),        cls: 'fn', invLabel: '√x',   invFn: () => insertFn('sqrt(') },
+    { label: 'x³',   fn: () => append('^3'),        cls: 'fn', invLabel: '∛x',   invFn: () => insertFn('cbrt(') },
+    { label: 'xʸ',   fn: () => append('^'),         cls: 'fn', invLabel: 'ʸ√x',  invFn: () => insertFn('nthrt(') },
+    { label: 'π',    fn: () => append('π'),          cls: 'fn' },
+    { label: 'e',    fn: () => append('e'),          cls: 'fn' },
+    // row 3
+    { label: '(',    fn: () => append('('),          cls: 'op' },
+    { label: ')',    fn: () => append(')'),          cls: 'op' },
+    { label: '%',    fn: () => append('%'),          cls: 'op' },
+    { label: '1/x',  fn: () => insertFn('inv('),    cls: 'fn' },
+    { label: '|x|',  fn: () => insertFn('abs('),    cls: 'fn' },
+    // row 4
+    { label: '7',    fn: () => append('7'),          cls: 'num' },
+    { label: '8',    fn: () => append('8'),          cls: 'num' },
+    { label: '9',    fn: () => append('9'),          cls: 'num' },
+    { label: '÷',    fn: () => append('/'),          cls: 'op' },
+    { label: 'AC',   fn: () => clearAll(),           cls: 'clear' },
+    // row 5
+    { label: '4',    fn: () => append('4'),          cls: 'num' },
+    { label: '5',    fn: () => append('5'),          cls: 'num' },
+    { label: '6',    fn: () => append('6'),          cls: 'num' },
+    { label: '×',    fn: () => append('*'),          cls: 'op' },
+    { label: '⌫',   fn: () => backspace(),          cls: 'clear' },
+    // row 6
+    { label: '1',    fn: () => append('1'),          cls: 'num' },
+    { label: '2',    fn: () => append('2'),          cls: 'num' },
+    { label: '3',    fn: () => append('3'),          cls: 'num' },
+    { label: '−',    fn: () => append('-'),          cls: 'op' },
+    { label: '√',    fn: () => insertFn('sqrt('),   cls: 'fn' },
+    // row 7
+    { label: '0',    fn: () => append('0'),          cls: 'num' },
+    { label: '.',    fn: () => append('.'),          cls: 'num' },
+    { label: '±',    fn: () => negate(),             cls: 'fn' },
+    { label: '+',    fn: () => append('+'),          cls: 'op' },
+    { label: '=',    fn: () => evaluate(),           cls: 'eq', span: 2 },
+  ];
+
+  function buildGrid() {
+    const grid = document.getElementById('btnGrid');
+    grid.innerHTML = '';
+    buttons.forEach((b, i) => {
+      const el = document.createElement('button');
+      const isInv = inv && b.invLabel;
+      el.textContent = isInv ? b.invLabel : b.label;
+      el.className = b.cls || '';
+      if (b.cls === 'eq') el.style.gridColumn = 'span 2';
+      el.onclick = isInv ? b.invFn : b.fn;
+      grid.appendChild(el);
+    });
+  }
+
+  function append(ch) {
+    if (justEvaled && /[\d.(π]/.test(ch)) {
+      expr = '';
+    }
+    justEvaled = false;
+    expr += ch;
+    updateDisplay();
+  }
+
+  function insertFn(fn) {
+    if (justEvaled) { expr = lastResult; justEvaled = false; }
+    expr += fn;
+    updateDisplay();
+  }
+
+  function clearAll() {
+    expr = '';
+    lastResult = '';
+    display.className = 'result';
+    display.textContent = '0';
+    exprDisplay.textContent = '';
+    justEvaled = false;
+  }
+
+  function backspace() {
+    if (justEvaled) { expr = ''; justEvaled = false; updateDisplay(); return; }
+    expr = expr.slice(0, -1);
+    updateDisplay();
+  }
+
+  function negate() {
+    if (expr === '' && lastResult !== '') {
+      expr = lastResult;
+    }
+    // wrap in negation
+    if (expr) {
+      expr = '-(' + expr + ')';
+      updateDisplay();
+    }
+  }
+
+  function updateDisplay() {
+    exprDisplay.textContent = expr;
+    if (expr === '') {
+      display.textContent = '0';
+      display.className = 'result';
+    } else {
+      // live preview
+      try {
+        const val = calc(expr);
+        display.textContent = fmt(val);
+        display.className = 'result';
+      } catch {
+        display.textContent = expr || '0';
+        display.className = 'result';
+      }
+    }
+  }
+
+  function evaluate() {
+    if (!expr) return;
+    exprDisplay.textContent = expr + ' =';
+    try {
+      const val = calc(expr);
+      lastResult = fmt(val);
+      display.textContent = lastResult;
+      display.className = 'result';
+      expr = lastResult;
+      justEvaled = true;
+    } catch (e) {
+      display.textContent = 'Error';
+      display.className = 'result error';
+      expr = '';
+      justEvaled = false;
+    }
+  }
+
+  function fmt(n) {
+    if (!isFinite(n)) return n > 0 ? 'Infinity' : '-Infinity';
+    if (isNaN(n)) return 'NaN';
+    // avoid floating point noise
+    const s = parseFloat(n.toPrecision(12));
+    return String(s);
+  }
+
+  function toRad(x) { return mode === 'deg' ? x * Math.PI / 180 : x; }
+  function fromRad(x) { return mode === 'deg' ? x * 180 / Math.PI : x; }
+
+  function calc(s) {
+    // replace display chars
+    let e = s
+      .replace(/π/g, '(Math.PI)')
+      .replace(/\be\b/g, '(Math.E)')
+      .replace(/(\d+(?:\.\d+)?)\s*%/g, '($1/100)')
+      .replace(/\^/g, '**')
+      .replace(/÷/g, '/')
+      .replace(/×/g, '*')
+      .replace(/−/g, '-');
+
+    // functions with degree/radian handling
+    e = e.replace(/\bsin\(/g, '__sin(')
+         .replace(/\bcos\(/g, '__cos(')
+         .replace(/\btan\(/g, '__tan(')
+         .replace(/\basin\(/g, '__asin(')
+         .replace(/\bacos\(/g, '__acos(')
+         .replace(/\batan\(/g, '__atan(')
+         .replace(/\bln\(/g, 'Math.log(')
+         .replace(/\blog\(/g, 'Math.log10(')
+         .replace(/\bsqrt\(/g, 'Math.sqrt(')
+         .replace(/\bcbrt\(/g, 'Math.cbrt(')
+         .replace(/\babs\(/g, 'Math.abs(')
+         .replace(/\bexp\(/g, 'Math.exp(')
+         .replace(/\bpow\(/g, 'Math.pow(')
+         .replace(/\binv\(([^)]+)\)/g, '(1/($1))')
+         .replace(/\bnthrt\(([^,]+),([^)]+)\)/g, 'Math.pow($2,1/($1))');
+
+    const __sin  = x => Math.sin(toRad(x));
+    const __cos  = x => Math.cos(toRad(x));
+    const __tan  = x => Math.tan(toRad(x));
+    const __asin = x => fromRad(Math.asin(x));
+    const __acos = x => fromRad(Math.acos(x));
+    const __atan = x => fromRad(Math.atan(x));
+
+    // eslint-disable-next-line no-new-func
+    return Function(
+      '__sin','__cos','__tan','__asin','__acos','__atan',
+      '"use strict"; return (' + e + ');'
+    )(__sin,__cos,__tan,__asin,__acos,__atan);
+  }
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('btn-deg').classList.toggle('active', m === 'deg');
+    document.getElementById('btn-rad').classList.toggle('active', m === 'rad');
+  }
+
+  function toggleInv() {
+    inv = !inv;
+    document.getElementById('btn-inv').classList.toggle('active', inv);
+    buildGrid();
+  }
+
+  // Keyboard support
+  document.addEventListener('keydown', e => {
+    if (e.key >= '0' && e.key <= '9') append(e.key);
+    else if (e.key === '.') append('.');
+    else if (e.key === '+') append('+');
+    else if (e.key === '-') append('-');
+    else if (e.key === '*') append('*');
+    else if (e.key === '/') { e.preventDefault(); append('/'); }
+    else if (e.key === '%') append('%');
+    else if (e.key === '^') append('^');
+    else if (e.key === '(') append('(');
+    else if (e.key === ')') append(')');
+    else if (e.key === 'Enter' || e.key === '=') evaluate();
+    else if (e.key === 'Backspace') backspace();
+    else if (e.key === 'Escape') clearAll();
+  });
+
+  buildGrid();
+</script>
+</body>
+</html>
