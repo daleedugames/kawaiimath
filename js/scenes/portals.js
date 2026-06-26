@@ -12,17 +12,14 @@ class Portal {
   }
 
   update(dt) {
-    this.shimmer += dt * 3;
+    this.shimmer += dt * 2.5;
     if (this.flashTimer > 0) {
       this.flashTimer -= dt;
       if (this.flashTimer <= 0) this.flashType = null;
     }
   }
 
-  flash(type) {
-    this.flashType = type;
-    this.flashTimer = 0.4;
-  }
+  flash(type) { this.flashType = type; this.flashTimer = 0.5; }
 
   checkEntry(player) {
     return (
@@ -36,78 +33,110 @@ class Portal {
   draw(ctx, accentColor) {
     const x = this.x, y = this.y, w = this.w, h = this.h;
     const cx = x + w / 2;
-    const shimmerAlpha = 0.5 + 0.5 * Math.sin(this.shimmer);
+    const pulse = 0.5 + 0.5 * Math.sin(this.shimmer);
 
-    // flash overlay colour
-    let glowColor = accentColor;
-    if (this.flashType === 'correct') glowColor = '#00ff88';
-    if (this.flashType === 'wrong')   glowColor = '#ff3333';
+    let glow = accentColor;
+    if (this.flashType === 'correct') glow = '#00ff88';
+    if (this.flashType === 'wrong')   glow = '#ff3333';
 
-    // glow
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 18 + shimmerAlpha * 10;
-
-    // left pillar
+    // Drop shadow
     ctx.beginPath();
-    ctx.roundRect(x + 6, y + 28, 10, h - 28, 3);
-    ctx.fillStyle = this.flashType === 'wrong' ? '#cc2222' : '#8B0000';
+    ctx.ellipse(cx, y + h + 4, 20, 5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fill();
 
-    // right pillar
-    ctx.beginPath();
-    ctx.roundRect(x + w - 16, y + 28, 10, h - 28, 3);
-    ctx.fillStyle = this.flashType === 'wrong' ? '#cc2222' : '#8B0000';
-    ctx.fill();
+    // Outer glow
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = 18 + pulse * 14;
 
-    // top horizontal beam
+    // Left pillar
+    const pillGrad = ctx.createLinearGradient(x + 4, 0, x + 16, 0);
+    pillGrad.addColorStop(0, glow + 'dd');
+    pillGrad.addColorStop(1, glow + '66');
     ctx.beginPath();
-    ctx.roundRect(x, y + 14, w, 10, 3);
-    ctx.fillStyle = this.flashType === 'wrong' ? '#cc2222' : '#8B0000';
+    ctx.roundRect(x + 4, y + 30, 13, h - 30, [4, 0, 0, 4]);
+    ctx.fillStyle = pillGrad;
     ctx.fill();
+    ctx.strokeStyle = glow + 'cc';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
-    // curved top beam (the curved sotoba)
+    // Right pillar
     ctx.beginPath();
-    ctx.moveTo(x - 4, y + 18);
-    ctx.quadraticCurveTo(cx, y, x + w + 4, y + 18);
-    ctx.lineWidth = 8;
-    ctx.strokeStyle = this.flashType === 'wrong' ? '#cc2222' : '#8B0000';
+    ctx.roundRect(x + w - 17, y + 30, 13, h - 30, [0, 4, 4, 0]);
+    ctx.fillStyle = pillGrad;
+    ctx.fill();
+    ctx.stroke();
+
+    // Arch top
+    ctx.beginPath();
+    ctx.arc(cx, y + 32, w / 2 - 4, Math.PI, 0);
+    ctx.lineTo(x + w - 4, y + 32);
+    ctx.lineTo(x + 4, y + 32);
+    ctx.closePath();
+    ctx.fillStyle = glow + '99';
+    ctx.fill();
+    ctx.strokeStyle = glow;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
     ctx.shadowBlur = 0;
 
-    // portal entrance shimmer
-    const portalGrad = ctx.createLinearGradient(x + 16, y + 28, x + w - 32, y + h);
-    portalGrad.addColorStop(0, `${accentColor}44`);
-    portalGrad.addColorStop(0.5, `${accentColor}88`);
-    portalGrad.addColorStop(1, `${accentColor}22`);
+    // Inner shimmer fill
+    const ig = ctx.createLinearGradient(cx, y + 30, cx, y + h);
+    ig.addColorStop(0,   glow + 'cc');
+    ig.addColorStop(0.4, glow + '55');
+    ig.addColorStop(1,   glow + '11');
     ctx.beginPath();
-    ctx.rect(x + 16, y + 28, w - 32, h - 28);
-    ctx.fillStyle = portalGrad;
+    ctx.rect(x + 17, y + 30, w - 34, h - 30);
+    ctx.fillStyle = ig;
     ctx.fill();
 
-    // number label — wooden sign
+    // Small decorative circles on pillars
+    [y + 38, y + 54, y + 70].forEach(py => {
+      if (py > y + 30 && py < y + h - 5) {
+        ctx.beginPath();
+        ctx.arc(x + 10, py, 3, 0, Math.PI * 2);
+        ctx.fillStyle = glow + 'cc';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x + w - 10, py, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    // Number badge
     ctx.beginPath();
-    ctx.roundRect(cx - 22, y + 36, 44, 30, 6);
-    ctx.fillStyle = '#8B6914';
+    ctx.roundRect(cx - 22, y + 34, 44, 30, 12);
+    ctx.fillStyle = '#0a0020ee';
     ctx.fill();
-    ctx.strokeStyle = '#5C4500';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = glow;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = 10;
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
-    ctx.font = 'bold 20px sans-serif';
+    ctx.font = 'bold 22px "Fredoka One", "Arial Rounded MT Bold", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#fff';
-    ctx.shadowColor = '#000';
-    ctx.shadowBlur = 3;
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = 8;
     ctx.fillText(this.number, cx, y + 57);
     ctx.shadowBlur = 0;
 
-    // sparkles on correct flash
+    // Correct flash sparkles
     if (this.flashType === 'correct') {
       ctx.font = '16px serif';
-      ['✨','⭐','✨'].forEach((s, i) => {
-        ctx.fillText(s, cx + (i - 1) * 22, y - 8 + Math.sin(Date.now()/150 + i) * 6);
+      ['✨', '⭐', '✨'].forEach((s, i) => {
+        ctx.fillText(s, cx + (i - 1) * 24, y - 6 + Math.sin(Date.now() / 140 + i) * 7);
       });
+    }
+
+    // Wrong flash X
+    if (this.flashType === 'wrong') {
+      ctx.font = '22px serif';
+      ctx.fillText('❌', cx, y + 16);
     }
   }
 }

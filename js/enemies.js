@@ -2,8 +2,8 @@ class Enemy {
   constructor(x, y, patrolLeft, patrolRight) {
     this.x = x;
     this.y = y;
-    this.w = 28;
-    this.h = 28;
+    this.w = 30;
+    this.h = 30;
     this.patrolLeft = patrolLeft;
     this.patrolRight = patrolRight;
     this.vx = 60;
@@ -38,60 +38,104 @@ class Enemy {
     if (!this.alive) return;
     const cx = this.x + this.w / 2;
     const cy = this.y + this.h / 2;
-    const bob = Math.sin(this.wobble) * 2;
+    const bob = Math.sin(this.wobble) * 2.5;
+    const dir = this.vx > 0 ? 1 : -1;
 
-    // body (onigiri triangle-ish)
+    // World-themed block colors
+    const blockColors = ['#ff69b4', '#00b4d8', '#8b2be2', '#3cb371', '#e85d04'];
+    const highlightColors = ['#ffb3d9', '#66d4ee', '#c57dff', '#7ed4a0', '#f4a261'];
+    const shadowColors = ['#cc0066', '#006d99', '#4a0099', '#1a7a40', '#a33800'];
+    const col = blockColors[worldIndex % blockColors.length];
+    const hi  = highlightColors[worldIndex % highlightColors.length];
+    const sh  = shadowColors[worldIndex % shadowColors.length];
+
+    // Drop shadow
     ctx.beginPath();
-    ctx.ellipse(cx, cy + bob, 13, 13, 0, 0, Math.PI * 2);
-    ctx.fillStyle = worldIndex === 1 ? '#7EC8E3' : '#f5f5f5';
+    ctx.ellipse(cx, cy + 16 + bob, 12, 4, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.fill();
-    ctx.strokeStyle = '#ccc';
-    ctx.lineWidth = 1;
+
+    // Block body - bottom shadow face (3D effect)
+    ctx.beginPath();
+    ctx.roundRect(this.x + 2, this.y + 4 + bob, this.w - 2, this.h, 7);
+    ctx.fillStyle = sh;
+    ctx.fill();
+
+    // Main block face
+    ctx.beginPath();
+    ctx.roundRect(this.x, this.y + bob, this.w, this.h, 7);
+    ctx.fillStyle = col;
+    ctx.fill();
+    ctx.strokeStyle = sh;
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    // seaweed strip (onigiri style)
+    // Top highlight
     ctx.beginPath();
-    ctx.roundRect(cx - 10, cy + 4 + bob, 20, 7, 2);
-    ctx.fillStyle = '#2d5a1b';
+    ctx.roundRect(this.x + 4, this.y + 3 + bob, this.w - 8, 7, 3);
+    ctx.fillStyle = hi + 'aa';
     ctx.fill();
 
-    // eyes
+    // Eyes - white sclera
     ctx.beginPath();
-    ctx.ellipse(cx - 4, cy - 2 + bob, 3, 3.5, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#1a0033';
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(cx + 4, cy - 2 + bob, 3, 3.5, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#1a0033';
-    ctx.fill();
-    // shine
-    ctx.beginPath();
-    ctx.ellipse(cx - 3, cy - 3 + bob, 1, 1, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - 6, cy - 2 + bob, 5.5, 6, 0, 0, Math.PI * 2);
     ctx.fillStyle = '#fff';
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 5, cy - 3 + bob, 1, 1, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 6, cy - 2 + bob, 5.5, 6, 0, 0, Math.PI * 2);
     ctx.fillStyle = '#fff';
     ctx.fill();
 
-    // blush
+    // Pupils (look in direction of travel)
     ctx.beginPath();
-    ctx.ellipse(cx - 8, cy + 2 + bob, 4, 2.5, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,150,150,0.5)';
+    ctx.ellipse(cx - 6 + dir * 1.5, cy - 1 + bob, 3.5, 4, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#1a0033';
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 8, cy + 2 + bob, 4, 2.5, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,150,150,0.5)';
+    ctx.ellipse(cx + 6 + dir * 1.5, cy - 1 + bob, 3.5, 4, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#1a0033';
     ctx.fill();
 
-    // little feet
+    // Eye shines
     ctx.beginPath();
-    ctx.ellipse(cx - 6, cy + 13 + bob, 5, 3, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#ddd';
+    ctx.ellipse(cx - 5 + dir, cy - 3 + bob, 1.5, 1.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 6, cy + 13 + bob, 5, 3, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#ddd';
+    ctx.ellipse(cx + 7 + dir, cy - 3 + bob, 1.5, 1.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
     ctx.fill();
+
+    // Angry eyebrows (V shape toward center)
+    ctx.strokeStyle = '#1a0033';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - 11, cy - 9 + bob);
+    ctx.lineTo(cx - 2, cy - 7 + bob - (dir > 0 ? 2 : 0));
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 11, cy - 9 + bob);
+    ctx.lineTo(cx + 2, cy - 7 + bob - (dir < 0 ? 2 : 0));
+    ctx.stroke();
+
+    // Grumpy mouth
+    ctx.beginPath();
+    ctx.arc(cx, cy + 6 + bob, 4.5, 0.25, Math.PI - 0.25, true);
+    ctx.strokeStyle = '#1a0033';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Little round feet
+    ctx.beginPath();
+    ctx.ellipse(cx - 7, cy + 16 + bob, 6, 4, -0.2, 0, Math.PI * 2);
+    ctx.fillStyle = sh;
+    ctx.fill();
+    ctx.strokeStyle = sh; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(cx + 7, cy + 16 + bob, 6, 4, 0.2, 0, Math.PI * 2);
+    ctx.fillStyle = sh;
+    ctx.fill();
+    ctx.stroke();
   }
 }
