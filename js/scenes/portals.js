@@ -105,9 +105,9 @@ class Portal {
       }
     });
 
-    // Number badge
+    // Number badge — wide enough for 3-digit answers
     ctx.beginPath();
-    ctx.roundRect(cx - 22, y + 34, 44, 30, 12);
+    ctx.roundRect(cx - 28, y + 34, 56, 30, 12);
     ctx.fillStyle = '#0a0020ee';
     ctx.fill();
     ctx.strokeStyle = glow;

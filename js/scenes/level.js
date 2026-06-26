@@ -79,10 +79,16 @@ class LevelScene {
     const level = this.game.state.currentLevel;
     const count = 1 + Math.floor(level / 2);
     const enemies = [];
-    const positions = [[150, 370, 100, 280], [420, 310, 370, 530], [620, 280, 570, 720]];
-    for (let i = 0; i < Math.min(count, positions.length); i++) {
-      const [x, y, pl, pr] = positions[i];
-      enemies.push(new Enemy(x, y - 30, pl, pr));
+    // Place enemies on platforms 2, 3, 4 (indices into this.platforms array, skipping ground at [0] and first platform at [1])
+    const platSlots = [2, 3, 4];
+    for (let i = 0; i < Math.min(count, platSlots.length); i++) {
+      const plat = this.platforms[platSlots[i]];
+      if (!plat) continue;
+      // Patrol within the platform bounds so enemy never walks off the edge
+      const patrolLeft = plat.x;
+      const patrolRight = plat.x + plat.w;
+      const ex = plat.x + plat.w * 0.25;
+      enemies.push(new Enemy(ex, plat.y - 30, patrolLeft, patrolRight));
     }
     return enemies;
   }
@@ -209,16 +215,18 @@ class LevelScene {
         return;
       }
     }
-    for (const enemy of this.enemies) {
-      enemy.update(dt);
-      if (enemy.checkStomp(this.player)) {
-        enemy.alive = false;
-        this.player.vy = -300;
-        this.game.state.stars += this.player.starMultiplier;
-        Audio.stomp();
-        this._spawnParticles(enemy.x + 14, enemy.y + 14, this.world.accentColor, 10);
-      } else if (enemy.checkHit(this.player)) {
-        if (this.player.takeDamage()) this._loseLife();
+    if (!this.player.celebrating) {
+      for (const enemy of this.enemies) {
+        enemy.update(dt);
+        if (enemy.checkStomp(this.player)) {
+          enemy.alive = false;
+          this.player.vy = -300;
+          this.game.state.stars += this.player.starMultiplier;
+          Audio.stomp();
+          this._spawnParticles(enemy.x + 14, enemy.y + 14, this.world.accentColor, 10);
+        } else if (enemy.checkHit(this.player)) {
+          if (this.player.takeDamage()) this._loseLife();
+        }
       }
     }
     for (const pu of this.powerups) {
